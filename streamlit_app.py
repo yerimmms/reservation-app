@@ -3,8 +3,84 @@ from SRT import SRT
 import time
 from datetime import datetime
 
+# SRT adjacency 해시 테이블 (그래프 대신 dict)
+srt_adj = {
+    "SUSO": ["DONGTAN", "PYEONGTAEK_JIJE", "CHEONAN_ASAN", "OSONG", "DAEJEON", "GIMCHEON_GUMI", 
+             "SEODAEGU", "DONGDAEGU", "GYEONGJU", "ULSAN", "BUSAN", "MIRYANG", "JIYEONG", 
+             "CHANGWON_JUNGANG", "CHANGWON", "MASAN", "JINJU", "IKSAN", "JEONGEUP", 
+             "GWANGJU_SONGJEONG", "NAJU", "MOKPO", "SUNCHEON", "GWANGYANG", "YEOSU_EXPO", 
+             "POHANG", "GANGNEUNG"],
+    
+    "DONGTAN": ["PYEONGTAEK_JIJE", "CHEONAN_ASAN", "OSONG", "DAEJEON", "GIMCHEON_GUMI", 
+                "SEODAEGU", "DONGDAEGU", "GYEONGJU", "ULSAN", "BUSAN", "MIRYANG", "JIYEONG", 
+                "CHANGWON_JUNGANG", "CHANGWON", "MASAN", "JINJU", "IKSAN", "JEONGEUP", 
+                "GWANGJU_SONGJEONG", "NAJU", "MOKPO", "SUNCHEON", "GWANGYANG", "YEOSU_EXPO", 
+                "POHANG", "GANGNEUNG"],
+    
+    "PYEONGTAEK_JIJE": ["CHEONAN_ASAN", "OSONG", "DAEJEON", "GIMCHEON_GUMI", 
+                        "SEODAEGU", "DONGDAEGU", "GYEONGJU", "ULSAN", "BUSAN", 
+                        "MIRYANG", "JIYEONG", "CHANGWON_JUNGANG", "CHANGWON", "MASAN", "JINJU", 
+                        "IKSAN", "JEONGEUP", "GWANGJU_SONGJEONG", "NAJU", "MOKPO", 
+                        "SUNCHEON", "GWANGYANG", "YEOSU_EXPO", "POHANG", "GANGNEUNG"],
+    
+    "CHEONAN_ASAN": ["OSONG", "DAEJEON", "GIMCHEON_GUMI", "SEODAEGU", "DONGDAEGU", 
+                     "GYEONGJU", "ULSAN", "BUSAN", "MIRYANG", "JIYEONG", "CHANGWON_JUNGANG", 
+                     "CHANGWON", "MASAN", "JINJU", "IKSAN", "JEONGEUP", "GWANGJU_SONGJEONG", 
+                     "NAJU", "MOKPO", "SUNCHEON", "GWANGYANG", "YEOSU_EXPO", "POHANG", "GANGNEUNG"],
+    
+    "OSONG": ["DAEJEON", "GIMCHEON_GUMI", "SEODAEGU", "DONGDAEGU", "GYEONGJU", "ULSAN", 
+              "BUSAN", "MIRYANG", "JIYEONG", "CHANGWON_JUNGANG", "CHANGWON", "MASAN", "JINJU", 
+              "IKSAN", "JEONGEUP", "GWANGJU_SONGJEONG", "NAJU", "MOKPO", "SUNCHEON", 
+              "GWANGYANG", "YEOSU_EXPO", "POHANG", "GANGNEUNG"],
+    
+    "DAEJEON": ["GIMCHEON_GUMI", "SEODAEGU", "DONGDAEGU", "GYEONGJU", "ULSAN", "BUSAN", 
+                "MIRYANG", "JIYEONG", "CHANGWON_JUNGANG", "CHANGWON", "MASAN", "JINJU"],
+    
+    "GIMCHEON_GUMI": ["SEODAEGU", "DONGDAEGU", "GYEONGJU", "ULSAN", "BUSAN", "MIRYANG", 
+                      "JIYEONG", "CHANGWON_JUNGANG", "CHANGWON", "MASAN", "JINJU"],
+    
+    "SEODAEGU": ["DONGDAEGU", "GYEONGJU", "ULSAN", "BUSAN", "MIRYANG", "JIYEONG", 
+                 "CHANGWON_JUNGANG", "CHANGWON", "MASAN", "JINJU"],
+    
+    "DONGDAEGU": ["GYEONGJU", "ULSAN", "BUSAN", "MIRYANG", "JIYEONG", "CHANGWON_JUNGANG", 
+                  "CHANGWON", "MASAN", "JINJU", "POHANG"],
+    
+    "GYEONGJU": ["ULSAN", "BUSAN"],
+    "ULSAN": ["BUSAN"],
+    "MIRYANG": ["JIYEONG", "CHANGWON_JUNGANG", "CHANGWON", "MASAN", "JINJU"],
+    "JIYEONG": ["CHANGWON_JUNGANG", "CHANGWON", "MASAN", "JINJU"],
+    "CHANGWON_JUNGANG": ["CHANGWON", "MASAN", "JINJU"],
+    "CHANGWON": ["MASAN", "JINJU"],
+    "MASAN": ["JINJU"],
+    "IKSAN": ["JEONGEUP", "GWANGJU_SONGJEONG", "NAJU", "MOKPO", "SUNCHEON", "GWANGYANG", "YEOSU_EXPO"],
+    "JEONGEUP": ["GWANGJU_SONGJEONG", "NAJU", "MOKPO"],
+    "GWANGJU_SONGJEONG": ["NAJU", "MOKPO"],
+    "NAJU": ["MOKPO"],
+    "SUNCHEON": ["GWANGYANG", "YEOSU_EXPO"],
+    "GWANGYANG": ["YEOSU_EXPO"]
+}
+
+# 역 이름 해시
+station_names = {
+    "SUSO": "수서", "DONGTAN": "동탄", "PYEONGTAEK_JIJE": "평택지제", "CHEONAN_ASAN": "천안아산",
+    "OSONG": "오송", "DAEJEON": "대전", "GIMCHEON_GUMI": "김천(구미)", "SEODAEGU": "서대구",
+    "DONGDAEGU": "동대구", "GYEONGJU": "경주", "ULSAN": "울산", "BUSAN": "부산",
+    "MIRYANG": "밀양", "JIYEONG": "진영", "CHANGWON_JUNGANG": "창원중앙", "CHANGWON": "창원",
+    "MASAN": "마산", "JINJU": "진주", "IKSAN": "익산", "JEONGEUP": "정읍",
+    "GWANGJU_SONGJEONG": "광주송정", "NAJU": "나주", "MOKPO": "목포",
+    "YEOSU_EXPO": "여수EXPO", "SUNCHEON": "순천", "GWANGYANG": "광양", "POHANG": "포항",
+    "GANGNEUNG": "강릉"
+}
+
+all_stations = list(srt_adj.keys()) + ["GANGNEUNG", "POHANG"]  # 종점 포함
+
+# Session state 초기화
+if 'departure_id' not in st.session_state:
+    st.session_state.departure_id = "DONGTAN"
+
+
 def main():
-    st.title("SRT 열차 예약")
+    st.title("🚄 SRT Reservation")
 
     # 로그인 및 조회 조건 입력
     col1, col2 = st.columns(2)
@@ -15,15 +91,43 @@ def main():
 
     col3, col4 = st.columns(2)
     with col3:
-        DEP = st.text_input("출발역", "동탄")
+        # DEP = st.text_input("출발역", "동탄")
+        departure_id = st.selectbox(
+            "출발역 (해시 테이블 조회)",
+            all_stations,
+            index=all_stations.index(st.session_state.departure_id),
+            format_func=lambda x: station_names.get(x, x)
+        )
+        st.session_state.departure_id = departure_id
+        # 출발역이 바뀔 때 도착역 선택값을 초기화하여 바로 반영되도록 함
+        st.session_state.pop("filtered_arrival", None)
+        DEP = station_names[departure_id]
     with col4:
-        ARR = st.text_input("도착역", "순천")
+        # ARR = st.text_input("도착역", "순천")
+        valid_arrivals = srt_adj.get(st.session_state.departure_id, [])
+
+        if valid_arrivals:
+            # 도착역 필터링 드롭다운
+            try:
+                default_idx = valid_arrivals.index("SUNCHEON")
+            except ValueError:
+                default_idx = 0
+
+            arrival_id = st.selectbox(
+                "도착역 (연결된 역만)",
+                valid_arrivals,
+                format_func=lambda x: station_names[x],
+                key="filtered_arrival",
+                index=default_idx,
+            )
+            ARR = station_names[arrival_id]
+
 
     col5, col6 = st.columns(2)
     with col5:
-        DATE = st.text_input("날짜 (YYYYMMDD)", "20251004")
+        DATE = st.text_input("날짜 (YYMMDD)", "260215", max_chars=6)
     with col6:
-        TIME = st.text_input("시간 (HHMMSS)", "060000")
+        TIME = st.text_input("시간 (HHMM)", "0600", max_chars=4)
 
     if st.button("예약 시작"):
         try:
@@ -36,7 +140,7 @@ def main():
         while True:
             with placeholder.container():
                 st.write(f"[{datetime.now()}] {DATE} {TIME} 이후 {DEP} → {ARR} 열차 검색 중...")
-                trains = srt.search_train(DEP, ARR, DATE, TIME)
+                trains = srt.search_train(DEP, ARR, f'20{DATE}', f'{TIME}00')
                 if not trains:
                     st.write("검색 결과가 없습니다.")
                     time.sleep(1)
