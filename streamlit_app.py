@@ -77,8 +77,8 @@ all_stations = list(srt_adj.keys()) + ["GANGNEUNG", "POHANG"]  # 종점 포함
 # Session state 초기화
 if 'departure_id' not in st.session_state:
     st.session_state.departure_id = "DONGTAN"
-if 'arrival_id' not in st.session_state:
-    st.session_state.arrival_id = "SUNCHEON"
+if 'filtered_arrival' not in st.session_state:
+    st.session_state.filtered_arrival = "SUNCHEON"
 
 def main():
     st.title("🚄 SRT Reservation")
@@ -114,8 +114,8 @@ def main():
                 format_func=lambda x: station_names[x],
                 key="filtered_arrival",
             )
-            st.write(f'선택된 도착역: {st.session_state.filtered_arrival}')
-            st.session_state.arrival_id = arrival_id
+            st.write(f'선택된 도착역: {arrival_id}')
+            st.session_state.filtered_arrival = arrival_id
             ARR = station_names[arrival_id]
 
     col5, col6 = st.columns(2)
