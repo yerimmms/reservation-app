@@ -102,7 +102,7 @@ def main():
         )
         st.session_state.departure_id = departure_id
         # 출발역이 바뀔 때 도착역 선택값을 초기화하여 바로 반영되도록 함
-        st.session_state.pop("filtered_arrival", None)
+        #st.session_state.pop("filtered_arrival", None)
         DEP = station_names[departure_id]
     with col4:
         # ARR = st.text_input("도착역", "순천")
