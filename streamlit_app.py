@@ -114,6 +114,7 @@ def main():
                 format_func=lambda x: station_names[x],
                 key="filtered_arrival",
             )
+            st.write(f'선택된 도착역: {arrival_id}')
             st.session_state.arrival_id = arrival_id
             ARR = station_names[arrival_id]
 
