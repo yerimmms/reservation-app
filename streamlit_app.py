@@ -80,6 +80,9 @@ if 'departure_id' not in st.session_state:
 
 def update_arrival():
     st.session_state.filtered_arrival = st.session_state.filtered_arrival
+
+def delete_arrival():
+    st.session_state.pop("filtered_arrival", None)
     
 def main():
     st.title("🚄 SRT Reservation")
@@ -98,7 +101,8 @@ def main():
             "출발역 (해시 테이블 조회)",
             all_stations,
             index=all_stations.index(st.session_state.departure_id),
-            format_func=lambda x: station_names.get(x, x)
+            format_func=lambda x: station_names.get(x, x),
+            on_change=delete_arrival
         )
         st.session_state.departure_id = departure_id
         # 출발역이 바뀔 때 도착역 선택값을 초기화하여 바로 반영되도록 함
