@@ -121,7 +121,7 @@ def main():
                 index=default_idx,
             )
             ARR = station_names[arrival_id]
-
+            print(f'도착역: {ARR}')
 
     col5, col6 = st.columns(2)
     with col5:
