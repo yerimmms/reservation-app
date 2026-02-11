@@ -112,7 +112,6 @@ def main():
                 valid_arrivals,
                 format_func=lambda x: station_names[x],
                 key="filtered_arrival",
-                index=0,
             )
             ARR = station_names[arrival_id]
 
