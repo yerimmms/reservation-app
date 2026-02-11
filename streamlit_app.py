@@ -104,27 +104,20 @@ def main():
     with col4:
         # ARR = st.text_input("도착역", "순천")
         valid_arrivals = srt_adj.get(st.session_state.departure_id, [])
-            
-        if 'filtered_arrival' not in st.session_state:
-            try:
-                st.session_state.filtered_arrival = "SUNCHEON"
-            except ValueError:
-                st.session_state.filtered_arrival = valid_arrivals[0]
-        # 이전 값이 현재 리스트에 있는지 확인 후 fallback
-        if st.session_state.filtered_arrival not in valid_arrivals:
-            st.session_state.filtered_arrival = valid_arrivals[0]
-        
         if valid_arrivals:
-            # 도착역 필터링 드롭다운
+            if "filtered_arrival" not in st.session_state:
+                st.session_state.filtered_arrival = valid_arrivals[0]
+            
             arrival_id = st.selectbox(
                 "도착역 (연결된 역만)",
                 valid_arrivals,
                 format_func=lambda x: station_names[x],
                 key="filtered_arrival",
+                index=None
             )
-            st.session_state.filtered_arrival = arrival_id
+            
             ARR = station_names[arrival_id]
-            st.write(f'선택된 도착역: {ARR}')
+            st.write(f'도착역: {ARR}')
 
     col5, col6 = st.columns(2)
     with col5:
