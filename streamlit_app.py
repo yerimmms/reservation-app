@@ -78,6 +78,9 @@ all_stations = list(srt_adj.keys()) + ["GANGNEUNG", "POHANG"]  # 종점 포함
 if 'departure_id' not in st.session_state:
     st.session_state.departure_id = "DONGTAN"
 
+def update_arrival():
+    st.session_state.filtered_arrival = st.session_state.filtered_arrival
+    
 def main():
     st.title("🚄 SRT Reservation")
 
@@ -108,16 +111,13 @@ def main():
             if "filtered_arrival" not in st.session_state:
                 st.session_state.filtered_arrival = valid_arrivals[0]
             
-            default_idx = 0
-            if st.session_state.filtered_arrival in valid_arrivals:
-                default_idx = valid_arrivals.index(st.session_state.filtered_arrival)
-            
             arrival_id = st.selectbox(
                 "도착역 (연결된 역만)",
                 valid_arrivals,
                 format_func=lambda x: station_names[x],
                 key="filtered_arrival",
-                index=default_idx
+                index=None,
+                on_change=update_arrival
             )
             
             ARR = station_names[arrival_id]
