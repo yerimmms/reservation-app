@@ -125,7 +125,6 @@ def main():
             )
             
             ARR = station_names[arrival_id]
-            st.write(f'도착역: {ARR}')
 
     col5, col6 = st.columns(2)
     with col5:
