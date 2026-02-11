@@ -108,12 +108,16 @@ def main():
             if "filtered_arrival" not in st.session_state:
                 st.session_state.filtered_arrival = valid_arrivals[0]
             
+            default_idx = 0
+            if st.session_state.filtered_arrival in valid_arrivals:
+                default_idx = valid_arrivals.index(st.session_state.filtered_arrival)
+            
             arrival_id = st.selectbox(
                 "도착역 (연결된 역만)",
                 valid_arrivals,
                 format_func=lambda x: station_names[x],
                 key="filtered_arrival",
-                index=None
+                index=default_idx
             )
             
             ARR = station_names[arrival_id]
