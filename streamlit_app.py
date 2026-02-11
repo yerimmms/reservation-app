@@ -64,7 +64,7 @@ srt_adj = {
 station_names = {
     "SUSO": "수서", "DONGTAN": "동탄", "PYEONGTAEK_JIJE": "평택지제", "CHEONAN_ASAN": "천안아산",
     "OSONG": "오송", "DAEJEON": "대전", "GIMCHEON_GUMI": "김천(구미)", "SEODAEGU": "서대구",
-    "DONGDAEGU": "동대구", "GYEONGJU": "경주", "ULSAN": "울산", "BUSAN": "부산",
+    "DONGDAEGU": "동대구", "GYEONGJU": "경주", "ULSAN": "울산(통도사)", "BUSAN": "부산",
     "MIRYANG": "밀양", "JIYEONG": "진영", "CHANGWON_JUNGANG": "창원중앙", "CHANGWON": "창원",
     "MASAN": "마산", "JINJU": "진주", "IKSAN": "익산", "JEONGEUP": "정읍",
     "GWANGJU_SONGJEONG": "광주송정", "NAJU": "나주", "MOKPO": "목포",
