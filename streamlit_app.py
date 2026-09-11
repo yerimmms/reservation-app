@@ -1,17 +1,17 @@
 import streamlit as st
+import requests
 from datetime import datetime, time as dtime
 
 from korail2 import (
     AdultPassenger,
-    ChildPassenger,
-    Korail,
     KorailError,
     NoResultsError,
     ReserveOption,
-    SeniorPassenger,
     SoldOutError,
     TrainType,
 )
+
+from korail_client import REQUEST_TIMEOUT, login
 
 # 코레일+ 통합(2026-09 운행분~)으로 (구)SRT 노선도 KTX로 판매되고 수서/서울 출발역
 # 구분이 사라졌다. 따라서 SRT 전용 인접 그래프 대신 단일 역 목록만 유지한다.
@@ -26,23 +26,15 @@ STATIONS = [
     "평창", "진부(오대산)", "강릉",
 ]
 
+DEFAULT_DEP = "순천"
+DEFAULT_ARR = "용산"
+
 SEAT_OPTIONS = {
     "일반실 우선": ReserveOption.GENERAL_FIRST,
     "일반실만": ReserveOption.GENERAL_ONLY,
     "특실 우선": ReserveOption.SPECIAL_FIRST,
     "특실만": ReserveOption.SPECIAL_ONLY,
 }
-
-
-def build_passengers(adult, child, senior):
-    psgrs = []
-    if adult:
-        psgrs.append(AdultPassenger(adult))
-    if child:
-        psgrs.append(ChildPassenger(child))
-    if senior:
-        psgrs.append(SeniorPassenger(senior))
-    return psgrs or None
 
 
 def fmt_time(hhmmss):
@@ -65,6 +57,16 @@ def train_label(train):
         f"{fmt_time(train.dep_time)} → {fmt_time(train.arr_time)} "
         f"{train.train_type_name} {train.train_no}"
     )
+
+
+def show_network_error(exc):
+    if isinstance(exc, requests.exceptions.Timeout):
+        st.error(
+            f"코레일 서버가 {REQUEST_TIMEOUT}초 안에 응답하지 않았습니다. "
+            "잠시 후 다시 시도해 주세요."
+        )
+    else:
+        st.error(f"네트워크 오류: {exc}")
 
 
 def show_korail_error(exc):
@@ -92,11 +94,11 @@ def main():
 
     col3, col4 = st.columns(2)
     with col3:
-        dep = st.selectbox("출발역", STATIONS, index=STATIONS.index("서울"))
+        dep = st.selectbox("출발역", STATIONS, index=STATIONS.index(DEFAULT_DEP))
     with col4:
         arrivals = [s for s in STATIONS if s != dep]
         # 출발역이 기본 도착역과 같아지면 목록에서 빠지므로 첫 역으로 대체한다.
-        default_arr = "부산" if "부산" in arrivals else arrivals[0]
+        default_arr = DEFAULT_ARR if DEFAULT_ARR in arrivals else arrivals[0]
         arr = st.selectbox("도착역", arrivals, index=arrivals.index(default_arr))
 
     col5, col6 = st.columns(2)
@@ -105,33 +107,37 @@ def main():
     with col6:
         dep_time = st.time_input("출발 시각 (이후 열차 조회)", value=dtime(6, 0))
 
-    col7, col8, col9, col10 = st.columns(4)
+    col7, col8 = st.columns(2)
     with col7:
-        adult = st.number_input("성인", min_value=0, max_value=9, value=1)
+        adult = st.number_input("인원", min_value=1, max_value=9, value=1)
     with col8:
-        child = st.number_input("어린이", min_value=0, max_value=9, value=0)
-    with col9:
-        senior = st.number_input("경로", min_value=0, max_value=9, value=0)
-    with col10:
         seat_label = st.selectbox("좌석", list(SEAT_OPTIONS.keys()))
 
     if st.button("열차 조회", type="primary"):
         if not user_id or not user_pw:
             st.error("아이디와 비밀번호를 입력해 주세요.")
             return
-        if adult + child + senior < 1:
-            st.error("승객을 1명 이상 지정해 주세요.")
-            return
 
         with st.spinner("로그인 중..."):
             try:
-                korail = Korail(user_id, user_pw)
+                korail = login(user_id, user_pw)
+            except requests.exceptions.RequestException as exc:
+                show_network_error(exc)
+                return
+            except ValueError:
+                # 차단 페이지 등 JSON이 아닌 응답
+                st.error("코레일 서버가 예상과 다른 응답을 보냈습니다. 매크로 차단 상태일 수 있습니다.")
+                return
             except KorailError as exc:
                 show_korail_error(exc)
                 return
-            except Exception as exc:
-                st.error(f"로그인 실패: {exc}")
-                return
+
+        if korail is None:
+            st.error(
+                "로그인에 실패했습니다. 아이디와 비밀번호를 확인해 주세요. "
+                "정보가 맞다면 코레일의 매크로 차단일 수 있습니다."
+            )
+            return
 
         with st.spinner("열차 조회 중..."):
             try:
@@ -141,12 +147,15 @@ def main():
                     dep_date.strftime("%Y%m%d"),
                     dep_time.strftime("%H%M%S"),
                     train_type=TrainType.KTX,
-                    passengers=build_passengers(adult, child, senior),
+                    passengers=[AdultPassenger(adult)],
                     include_no_seats=True,
                 )
             except NoResultsError:
                 st.session_state.pop("trains", None)
                 st.info("조회된 열차가 없습니다.")
+                return
+            except requests.exceptions.RequestException as exc:
+                show_network_error(exc)
                 return
             except KorailError as exc:
                 show_korail_error(exc)
@@ -154,7 +163,7 @@ def main():
 
         st.session_state.korail = korail
         st.session_state.trains = trains
-        st.session_state.passengers = (adult, child, senior)
+        st.session_state.adult = adult
         st.session_state.seat_label = seat_label
 
     trains = st.session_state.get("trains")
@@ -177,16 +186,18 @@ def main():
     picked = st.selectbox("예약할 열차", available, format_func=train_label)
 
     if st.button("예약하기"):
-        adult, child, senior = st.session_state.passengers
         with st.spinner("예약 중..."):
             try:
                 reservation = st.session_state.korail.reserve(
                     picked,
-                    passengers=build_passengers(adult, child, senior),
+                    passengers=[AdultPassenger(st.session_state.adult)],
                     option=SEAT_OPTIONS[st.session_state.seat_label],
                 )
             except SoldOutError:
                 st.error("이미 매진되었습니다. 다시 조회해 주세요.")
+                return
+            except requests.exceptions.RequestException as exc:
+                show_network_error(exc)
                 return
             except KorailError as exc:
                 show_korail_error(exc)

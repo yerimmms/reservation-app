@@ -24,13 +24,14 @@ from datetime import datetime
 from korail2 import (
     AdultPassenger,
     ChildPassenger,
-    Korail,
     NoResultsError,
     ReserveOption,
     SeniorPassenger,
     SoldOutError,
     TrainType,
 )
+
+from korail_client import login
 
 SEAT_OPTIONS = {
     "general_first": ReserveOption.GENERAL_FIRST,
@@ -143,9 +144,17 @@ def main():
     seat_option = SEAT_OPTIONS[args.seat]
 
     try:
-        korail = Korail(args.id, args.password)
+        korail = login(args.id, args.password)
     except Exception as exc:
         print(f"로그인 실패: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    if korail is None:
+        print(
+            "로그인 실패: 아이디와 비밀번호를 확인해 주세요. "
+            "정보가 맞다면 코레일의 매크로 차단일 수 있습니다.",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     print(f"로그인 성공. {args.dep} → {args.arr} ({args.date} {args.time} 이후) 열차 탐색을 시작합니다.")
