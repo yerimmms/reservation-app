@@ -91,11 +91,13 @@ def reserve_loop(korail, args, passengers, train_type, seat_option):
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
             # include_no_seats=True로 매진 열차도 함께 받아와, 좌석이 풀리는 순간을 감지한다.
+            # --try-waiting이면 예약대기 가능 열차도 결과에 포함시켜야 신청 대상이 보인다.
             trains = korail.search_train(
                 args.dep, args.arr, args.date, args.time,
                 train_type=train_type,
                 passengers=passengers,
                 include_no_seats=True,
+                include_waiting_list=args.try_waiting,
             )
         except NoResultsError:
             print(f"[{now}] (#{attempt}) 조회 결과 없음. {args.interval}초 후 재시도.")
@@ -106,8 +108,18 @@ def reserve_loop(korail, args, passengers, train_type, seat_option):
             time.sleep(args.interval)
             continue
 
-        candidates = [t for t in trains if t.reserve_possible == "Y"]
-        print(f"[{now}] (#{attempt}) 조회된 열차 {len(trains)}건, 예약가능 {len(candidates)}건")
+        # 예약대기 대상 열차는 매진이라 reserve_possible이 'N'이다. --try-waiting일 때
+        # 이들을 후보에서 빼면 예약대기 신청이 아예 시도되지 않는다.
+        seatable = [t for t in trains if t.reserve_possible == "Y"]
+        waitable = [
+            t for t in trains
+            if args.try_waiting and t.reserve_possible != "Y" and t.has_general_waiting_list()
+        ]
+        candidates = seatable + waitable
+        print(
+            f"[{now}] (#{attempt}) 조회된 열차 {len(trains)}건, "
+            f"예약가능 {len(seatable)}건, 예약대기 가능 {len(waitable)}건"
+        )
 
         for train in candidates:
             try:

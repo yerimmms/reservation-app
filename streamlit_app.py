@@ -48,6 +48,7 @@ def train_row(train):
         "도착": f"{train.arr_name} {fmt_time(train.arr_time)}",
         "특실": "○" if train.has_special_seat() else "—",
         "일반실": "○" if train.has_general_seat() else "—",
+        "예약대기": "○" if train.has_general_waiting_list() else "—",
         "상태": (train.reserve_possible_name or "").replace("\n", " "),
     }
 
@@ -57,6 +58,13 @@ def train_label(train):
         f"{fmt_time(train.dep_time)} → {fmt_time(train.arr_time)} "
         f"{train.train_type_name} {train.train_no}"
     )
+
+
+def picker_label(train):
+    """좌석 예약과 예약대기 신청을 선택 단계에서 구분해준다."""
+    if train.reserve_possible == "Y":
+        return train_label(train)
+    return f"{train_label(train)}  [예약대기]"
 
 
 def show_network_error(exc):
@@ -107,11 +115,14 @@ def main():
     with col6:
         dep_time = st.time_input("출발 시각 (이후 열차 조회)", value=dtime(6, 0))
 
-    col7, col8 = st.columns(2)
+    col7, col8, col9 = st.columns([1, 2, 2])
     with col7:
         adult = st.number_input("인원", min_value=1, max_value=9, value=1)
     with col8:
         seat_label = st.selectbox("좌석", list(SEAT_OPTIONS.keys()))
+    with col9:
+        st.write("")
+        try_waiting = st.checkbox("매진 시 예약대기 신청", value=True)
 
     if st.button("열차 조회", type="primary"):
         if not user_id or not user_pw:
@@ -149,6 +160,8 @@ def main():
                     train_type=TrainType.KTX,
                     passengers=[AdultPassenger(adult)],
                     include_no_seats=True,
+                    # 예약대기 대상 열차를 결과에 포함시켜야 신청할 수 있다.
+                    include_waiting_list=try_waiting,
                 )
             except NoResultsError:
                 st.session_state.pop("trains", None)
@@ -165,6 +178,7 @@ def main():
         st.session_state.trains = trains
         st.session_state.adult = adult
         st.session_state.seat_label = seat_label
+        st.session_state.try_waiting = try_waiting
 
     trains = st.session_state.get("trains")
     if not trains:
@@ -177,21 +191,33 @@ def main():
         hide_index=True,
     )
 
-    available = [t for t in trains if t.reserve_possible == "Y"]
+    # 예약대기 대상은 매진이라 reserve_possible이 'N'이므로 따로 모아야 후보에 남는다.
+    seatable = [t for t in trains if t.reserve_possible == "Y"]
+    waitable = [
+        t for t in trains
+        if st.session_state.get("try_waiting")
+        and t.reserve_possible != "Y"
+        and t.has_general_waiting_list()
+    ]
+    available = seatable + waitable
     if not available:
-        st.info("예약 가능한 좌석이 없습니다. 조건을 바꾸거나 다시 조회해 보세요.")
+        st.info("예약 가능한 좌석도, 예약대기 가능한 열차도 없습니다. 다시 조회해 보세요.")
         return
 
     st.subheader("예약")
-    picked = st.selectbox("예약할 열차", available, format_func=train_label)
+    if waitable:
+        st.caption(f"좌석 예약 {len(seatable)}건 · 예약대기 신청 가능 {len(waitable)}건")
+    picked = st.selectbox("예약할 열차", available, format_func=picker_label)
+    is_waiting = picked.reserve_possible != "Y"
 
-    if st.button("예약하기"):
-        with st.spinner("예약 중..."):
+    if st.button("예약대기 신청하기" if is_waiting else "예약하기"):
+        with st.spinner("신청 중..." if is_waiting else "예약 중..."):
             try:
                 reservation = st.session_state.korail.reserve(
                     picked,
                     passengers=[AdultPassenger(st.session_state.adult)],
                     option=SEAT_OPTIONS[st.session_state.seat_label],
+                    try_waiting=st.session_state.get("try_waiting", False),
                 )
             except SoldOutError:
                 st.error("이미 매진되었습니다. 다시 조회해 주세요.")
@@ -203,12 +229,20 @@ def main():
                 show_korail_error(exc)
                 return
 
-        st.success("✅ 예약 완료")
-        st.write(reservation)
-        st.info(
-            f"결제 기한: {reservation.buy_limit_date} "
-            f"{fmt_time(reservation.buy_limit_time)} — 코레일+ 앱에서 결제해 주세요."
-        )
+        if is_waiting:
+            st.success("✅ 예약대기 신청 완료")
+            st.write(reservation)
+            st.info(
+                "좌석이 나면 신청 순서대로 배정되고 카카오톡 알림톡/문자로 통보됩니다. "
+                "배정 후 결제 기한을 넘기면 즉시 취소되니 알림을 놓치지 마세요."
+            )
+        else:
+            st.success("✅ 예약 완료")
+            st.write(reservation)
+            st.info(
+                f"결제 기한: {reservation.buy_limit_date} "
+                f"{fmt_time(reservation.buy_limit_time)} — 코레일+ 앱에서 결제해 주세요."
+            )
 
 
 if __name__ == "__main__":
