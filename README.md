@@ -12,27 +12,47 @@
 
 ### 실행 방법
 
-1. 의존성 설치
+가상환경을 만들고 의존성을 설치하는 셋업 스크립트가 있습니다. Python 3.9 이상이 필요합니다.
 
-   ```
-   $ pip install -r requirements.txt
-   ```
+**Windows (PowerShell)**
 
-   > `korail2` 설치가 `install_layout` 오류로 실패하면 `pip install "setuptools<70"` 후 다시 시도하세요.
+```powershell
+.\setup.ps1
+.\.venv\Scripts\streamlit run streamlit_app.py
+```
 
-2. 앱 실행
+실행 정책 때문에 막히면 `PowerShell -ExecutionPolicy Bypass -File .\setup.ps1`
 
-   ```
-   $ streamlit run streamlit_app.py
-   ```
+**macOS / Linux**
+
+```bash
+./setup.sh
+.venv/bin/streamlit run streamlit_app.py
+```
+
+> 시스템 Python에 직접 설치하면 `korail2`가 레거시 `setup.py`를 쓰는 탓에
+> `AttributeError: install_layout`으로 실패할 수 있습니다. 가상환경을 쓰면 대개 문제가 없고,
+> 그래도 실패하면 셋업 스크립트가 `setuptools<70` + 빌드 격리 해제로 자동 재시도합니다.
 
 ### CLI 스크립트
 
-빈 좌석이 생길 때까지 주기적으로 조회해 예약을 시도하는 CLI입니다.
+빈 좌석이 생길 때까지 주기적으로 조회해 예약(또는 예약대기 신청)을 시도하는 CLI입니다.
 
+**Windows (PowerShell)**
+
+```powershell
+$env:KORAIL_ID = "01012345678"; $env:KORAIL_PW = "비밀번호"
+.\.venv\Scripts\python ktx_reserve.py --dep 순천 --arr 용산 --date 20260925 --try-waiting
 ```
-$ python ktx_reserve.py --dep 수서 --arr 부산 --date 20260915 --time 060000
+
+**macOS / Linux**
+
+```bash
+export KORAIL_ID=01012345678 KORAIL_PW=비밀번호
+.venv/bin/python ktx_reserve.py --dep 순천 --arr 용산 --date 20260925 --try-waiting
 ```
+
+`--try-waiting`을 주면 매진 열차의 예약대기까지 신청을 시도합니다.
 
 ID/비밀번호는 `KORAIL_ID`, `KORAIL_PW` 환경변수로 지정하거나 실행 시 프롬프트에 입력합니다. 옵션은 `python ktx_reserve.py --help`로 확인할 수 있습니다.
 
